@@ -1,0 +1,29 @@
+---
+- name: Upload Backup File to Google Drive
+  hosts: localhost
+  vars:
+    db_data_file: "./db_data.json"
+    backup_base_path: "user:/home/user/backups"
+
+  tasks:
+    - name: Read Json file
+      slurp:
+        src: "{{ db_data_file }}"
+      register: db_data_json
+
+    - name: Convert Json file
+      set_fact:
+        db_data_list : "{{ db_data_json.content | b64decode | from_json }}"
+
+    - name: Backup DB
+      include_tasks: backup_gdrive.yaml
+      loop: "{{ db_data_list.db_list }}"
+      loop_control:
+        loop_var: item
+      vars:
+        db_name: "{{ item.db_name }}"
+        client_name: "{{ item.client_name }}"
+        fs_path: "{{ item.fs_path }}"
+        gdrive_backup_path: /backups
+        rclone_drive: drive
+

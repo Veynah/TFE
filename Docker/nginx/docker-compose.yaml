@@ -1,0 +1,36 @@
+volumes:
+  letsencrypt:
+  webdata:
+
+networks:
+  frontend:
+    name: frontend
+
+services:
+  web:
+    image: nginx:latest
+    volumes:
+      - ./volumes/sites_enabled:/etc/nginx/sites-enabled
+      - ./volumes/config_templates:/etc/nginx/templates
+      - webdata:/usr/share/nginx/html
+      - letsencrypt:/etc/letsencrypt
+    ports:
+      - 80:80
+      - 443:443
+    networks:
+      - frontend
+    restart: always
+
+  certbot: 
+    image: certbot/certbot:latest
+    volumes:
+      - webdata:/usr/share/nginx/html
+      - letsencrypt:/etc/letsencrypt
+
+  renewal:
+    image: certbot/certbot:latest
+    volumes:
+      - letsencrypt:/etc/letsencrypt
+      - webdata:/usr/share/nginx/html
+    command: certonly --webroot --webroot-path=/usr/share/nginx/html --force-renewal --agree-tos
+

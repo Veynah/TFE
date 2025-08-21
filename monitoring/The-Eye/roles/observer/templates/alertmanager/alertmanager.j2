@@ -1,0 +1,13 @@
+route:
+  receiver: "mail"
+  repeat_interval: 4h
+  group_by: [ alertname ]
+
+receivers:
+  - name: "mail"
+    email_configs:
+      - smarthost: "outlook.office365.com:587"
+        auth_username: "private@gmail.com"
+        auth_password: ""
+        from: "private@gmail.com"
+        to: "private@gmail.com"

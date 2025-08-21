@@ -1,0 +1,30 @@
+networks:
+  frontend:
+    name: frontend
+    external: true
+
+  backend:
+    name: backend
+    external: true
+
+services:
+  odoo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      ssh:
+        - default=/home/ubuntu/.ssh/id_rsa
+    container_name: ${CONTAINER_NAME}
+    image: ${IMAGE_NAME}
+    networks:
+      - frontend
+      - backend
+    restart: always
+    volumes:
+      - ${PWD}/volumes/odoo_filestore:/var/odoo
+    environment:
+      - PGUSER=${PGUSER}
+      - PGPASSWORD=${PGPASSWORD}
+      - PGHOST=${PGHOST}
+      - DB_NAME=${ODOO_DB}
+      - WORKERS=2

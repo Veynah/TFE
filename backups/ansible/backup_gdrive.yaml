@@ -1,0 +1,79 @@
+---
+- name: Set postgres dump file name
+  set_fact:
+    postgres_dump_file_name: "{{ db_name }}_backup_{{ ansible_date_time.date }}.dump"
+
+- name: Set filestore backup file name
+  set_fact:
+    filestore_archive_file_name: "{{ db_name }}_backup_{{ ansible_date_time.date }}.tar.bz2"
+
+- name: Make temporary directory for backups
+  ansible.builtin.tempfile:
+    state: directory
+    suffix: _backup
+  register: backup_path
+
+- name: Make client temp
+  ansible.builtin.file:
+    path: "{{ backup_path.path }}/{{ client_name }}"
+    state: directory
+    mode: '0777'
+
+- name: Make Temp
+  file:
+    path: "{{ backup_path.path }}/temp"
+    state: directory
+
+- name: Make Postgres temporary directory for backups
+  ansible.builtin.tempfile:
+    state: directory
+    suffix: _backup
+  register: postgres_backup_path
+
+- name: Dump PostgreSQL database from Docker container
+  command: |
+    docker exec -i postgres bash -c "pg_dump -Fc -O -d {{ db_name }} > /tmp/{{ postgres_dump_file_name }}"
+  register: postgres_dump_result
+
+- name: Copy PostgreSQL dump from container to host
+  command: >
+    docker cp postgres:/tmp/{{ postgres_dump_file_name }} {{ backup_path.path }}/temp/{{ postgres_dump_file_name }}
+  register: copy_postgres_dump_result
+
+- name: Remove PostgreSQL dump file from Docker container
+  command: |
+    docker exec -i postgres bash -c "rm /tmp/{{ postgres_dump_file_name }}"
+  register: remove_postgres_dump_result
+
+- name: Make Filestore archive backup
+  community.general.archive:
+    path:
+      - "{{ fs_path }}/{{ db_name }}"
+    dest: "{{ backup_path.path }}/temp/filestore.tar.bz2"
+    format: bz2
+    force_archive: true
+
+- name: Make final archive
+  community.general.archive:
+    path: "{{ backup_path.path }}/temp"
+    dest: "{{ backup_path.path }}/{{ client_name }}/{{ filestore_archive_file_name }}"
+    remove: true
+
+- name: change ownership to ubuntu
+  file:
+    path: "{{ backup_path.path }}"
+    recurse: true
+    owner: user
+    group: user
+    state: directory
+
+- name: Upload Backup to gdrive
+  become: yes
+  become_user: user
+  command: >
+    rclone moveto {{ backup_path.path }} {{ rclone_drive }}:{{ gdrive_backup_path }}
+  register: upload_result
+
+- name: Print Upload Result
+  debug:
+    msg: upload_result

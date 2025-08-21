@@ -1,0 +1,8 @@
+services:
+  community:
+    image: 127.0.0.1:5000/odoo:18.0_community
+    build:
+      context: .
+      dockerfile: Dockerfile_community
+      ssh:
+        - default=${SSH_KEY_PATH}
